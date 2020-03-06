@@ -166,6 +166,7 @@ def getImagesAndLabels(path):
     # now looping through all the image paths and loading the Ids and the images
     for imagePath in imagePaths:
         # loading the image and converting it to gray scale
+        # When translating a color image to black and white (mode “L”), the library uses the ITU-R 601-2 luma transform:  L = R * 299/1000 + G * 587/1000 + B * 114/1000
         pilImage = Image.open(imagePath).convert('L')
         # Now we are converting the PIL image into numpy array
         imageNp = np.array(pilImage, 'uint8')
@@ -190,11 +191,13 @@ def TrackImages():
     while True:
         ret, im = cam.read()
         gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-        faces = faceCascade.detectMultiScale(gray, 1.2, 5)
+        faces = faceCascade.detectMultiScale(gray, 1.3, 5)
         for(x, y, w, h) in faces:
             cv2.rectangle(im, (x, y), (x+w, y+h), (225, 0, 0), 2)
             Id, conf = recognizer.predict(gray[y:y+h, x:x+w])
-            if(conf < 50):
+            print(Id, conf)
+            confidence = int(100*(1-(conf)/300))
+            if(confidence > 75):
                 ts = time.time()
                 date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
                 timeStamp = datetime.datetime.fromtimestamp(
@@ -206,7 +209,6 @@ def TrackImages():
             else:
                 Id = 'Unknown'
                 tt = str(Id)
-            if(conf > 75):
                 noOfFile = len(os.listdir("ImagesUnknown"))+1
                 cv2.imwrite("ImagesUnknown\Image"+str(noOfFile) +
                             ".jpg", im[y:y+h, x:x+w])
