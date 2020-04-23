@@ -1,95 +1,86 @@
 import tkinter as tk
-from tkinter import Message, Text
+import numpy as np
+import pandas as pd
+from PIL import Image, ImageTk
 import cv2
 import os
 import shutil
 import csv
-import numpy as np
-from PIL import Image, ImageTk
-import pandas as pd
 import datetime
 import time
-import tkinter.ttk as ttk
-import tkinter.font as font
-
-window = tk.Tk()
-#helv36 = tk.Font(family='Helvetica', size=36, weight='bold')
-window.title("Face_Recogniser")
-
-dialog_title = 'QUIT'
-dialog_text = 'Are you sure?'
-#answer = messagebox.askquestion(dialog_title, dialog_text)
-
-window.geometry('1180x650')
-window.configure(background="white")
-
-#window.attributes('-fullscreen', True)
-
-window.grid_rowconfigure(0, weight=1)
-window.grid_columnconfigure(0, weight=1)
+import glob
 
 
-message = tk.Label(window, text="AUTOMATIC ATTENDANCE MANAGEMENT USING FACE RECOGNITION", font=(
-    "times new roman", 25), bg="red", fg="white", height=2)
+root = tk.Tk()
+root.title("Attendance System")
 
-message.place(x=0, y=0)
+frame_main = tk.Frame(root, bg="#E8E8E8")
+frame_main.rowconfigure(0, minsize=400)
+frame_main.columnconfigure([0, 1], minsize=350)
+frame_main.grid(row=0, column=0)
 
-lbl = tk.Label(window, text="Enter ID", width=20, height=2,
-               fg="white", bg="Blue", font=('times new roman', 15, ' bold '))
-lbl.place(x=0, y=100)
+# Sections
+frame_attendance = tk.Frame(frame_main, bg="#FBFBFB", width=350, height=400)
+frame_attendance.grid(row=0, column=0, padx=8, pady=8)
+frame_register = tk.Frame(frame_main, bg="#FBFBFB", width=350, height=400)
+frame_register.grid(row=0, column=1, padx=8, pady=8)
+frame_notification = tk.Frame(frame_main, bg="#FBFBFB", height=50, width=716)
+frame_notification.grid(row=1, column=0, columnspan=2, pady=8)
 
-txt = tk.Entry(window, width=20, bg="white",
-               fg="black", font=('times new roman', 15, ' bold '))
-txt.place(x=270, y=110)
+# Section Titles
+lbl_attend = tk.Label(master=frame_attendance,
+                      text="Attendance", font=("Helvetica", 20, 'bold'), fg="#212121", bg="#FBFBFB")
+lbl_attend.place(x=95, y=10)
 
-lbl2 = tk.Label(window, text="Enter Name", width=20, fg="white",
-                bg="blue", height=2, font=('times new roman', 15, ' bold '))
-lbl2.place(x=0, y=200)
+lbl_reg = tk.Label(master=frame_register,
+                   text="Register Student", font=("Helvetica", 20, 'bold'), fg="#212121", bg="#FBFBFB")
+lbl_reg.place(x=60, y=10)
 
-txt2 = tk.Entry(window, width=20, bg="white",
-                fg="black", font=('times new roman', 15, ' bold '))
-txt2.place(x=270, y=210)
-
-lbl3 = tk.Label(window, text="Notification : ", width=20, fg="white",
-                bg="blue", height=2, font=('times new roman', 15, ' bold underline '))
-lbl3.place(x=0, y=310)
-
-message = tk.Label(window, text="", bg="light blue", fg="white", width=30,
-                   height=2, font=('times new roman', 15, ' bold '))
-message.place(x=270, y=310)
-
-lbl3 = tk.Label(window, text="Attendance : ", width=20, fg="white",
-                bg="blue", height=2, font=('times', 15, ' bold  underline'))
-lbl3.place(x=0, y=560)
+lbl_noti = tk.Label(master=frame_notification, text="Notification:", font=(
+    "Helvetica", 11, 'bold'), fg="#212121", bg="#FBFBFB")
+lbl_noti.place(x=5, y=15)
 
 
-message2 = tk.Label(window, text="", fg="white", bg="blue",
-                    activeforeground="green", width=30, height=2, font=('times', 15, ' bold '))
-message2.place(x=270, y=560)
+lbl_ID = tk.Label(frame_register, text="Id",
+                  font=("Helvetica", 13), bg="#FBFBFB")
+lbl_ID.place(x=40, y=70)
+ent_ID = tk.Entry(frame_register, width=20,
+                  font=("Helvetica", 18), bg="#DCEBFF", borderwidth=1, relief=tk.GROOVE)
+ent_ID.place(x=40, y=95)
 
 
-def clear():
-    txt.delete(0, 'end')
-    res = ""
-    message.configure(text=res)
+lbl_name = tk.Label(frame_register, text="Name",
+                    font=("Helvetica", 13), bg="#FBFBFB")
+lbl_name.place(x=40, y=150)
+ent_name = tk.Entry(frame_register, width=20,
+                    font=("Helvetica", 18), bg="#DCEBFF", borderwidth=1, relief=tk.GROOVE)
+ent_name.place(x=40, y=175)
 
 
-def clear2():
-    txt2.delete(0, 'end')
-    res = ""
-    message.configure(text=res)
+lbl_noti_text = tk.Label(
+    frame_notification, text="", anchor=tk.W, fg="#212121", bg="#FBFBFB", width=65, font=("Helvetica", 12))
+lbl_noti_text.place(x=100, y=15)
 
 
-def is_number(s):
+frm_attendance = tk.Frame(master=frame_attendance,
+                          width=334, height=230, bg="#F8EAD6")
+frm_attendance.place(x=6, y=160)
+
+frm_detail = tk.Label(frm_attendance, text="",
+                      anchor=tk.W, width=35, bg="#F8EAD6")
+frm_detail.place(x=7, y=8)
+
+
+def is_number(value):
     try:
-        float(s)
+        float(value)
         return True
     except ValueError:
         pass
 
     try:
         import unicodedata
-        unicodedata.numeric(s)
+        unicodedata.numeric(value)
         return True
     except (TypeError, ValueError):
         pass
@@ -98,8 +89,8 @@ def is_number(s):
 
 
 def TakeImages():
-    Id = (txt.get())
-    name = (txt2.get())
+    Id = (ent_ID.get())
+    name = (ent_name.get())
     if(is_number(Id) and name.isalpha()):
         cam = cv2.VideoCapture(0)
         harcascadePath = "haarcascade_frontalface_default.xml"
@@ -114,50 +105,51 @@ def TakeImages():
                 # incrementing sample number
                 sampleNum = sampleNum+1
                 # saving the captured face in the dataset folder TrainingImage
-                cv2.imwrite("TrainingImage\ "+name + "."+Id + '.' +
+                cv2.imwrite("TrainingImage/ "+name + "."+Id + '.' +
                             str(sampleNum) + ".jpg", gray[y:y+h, x:x+w])
                 # display the frame
-                cv2.imshow('frame', img)
+                cv2.imshow('Capturing Face...', img)
             # wait for 100 miliseconds
             if cv2.waitKey(100) & 0xFF == ord('q'):
                 break
             # break if the sample number is morethan 100
-            elif sampleNum > 60:
+            elif sampleNum > 20:
                 break
         cam.release()
         cv2.destroyAllWindows()
         res = "Images Saved for ID : " + Id + " Name : " + name
         row = [Id, name]
-        with open('StudentDetails\StudentDetails.csv', 'a+') as csvFile:
+        with open('StudentDetails/StudentDetails.csv', 'a+') as csvFile:
             writer = csv.writer(csvFile)
             writer.writerow(row)
         csvFile.close()
-        message.configure(text=res)
+        lbl_noti_text.configure(text=res)
     else:
         if(is_number(Id)):
             res = "Enter Alphabetical Name"
-            message.configure(text=res)
+            lbl_noti_text.configure(text=res)
         if(name.isalpha()):
             res = "Enter Numeric Id"
-            message.configure(text=res)
+            lbl_noti_text.configure(text=res)
 
 
 def TrainImages():
-    # recognizer = cv2.face.LBPHFaceRecognizer_create()#$cv2.createLBPHFaceRecognizer()
-    recognizer = cv2.face_LBPHFaceRecognizer.create()
+    # $cv2.createLBPHFaceRecognizer()
+    recognizer = cv2.face.LBPHFaceRecognizer_create()
+    # recognizer = cv2.face_LBPHFaceRecognizer.create()
     harcascadePath = "haarcascade_frontalface_default.xml"
     detector = cv2.CascadeClassifier(harcascadePath)
     faces, Id = getImagesAndLabels("TrainingImage")
     recognizer.train(faces, np.array(Id))
-    recognizer.save("TrainingImageLabel\Trainner.yml")
+    recognizer.save("TrainingImageLabel/Trainner.yml")
     res = "Image Trained"  # +",".join(str(f) for f in Id)
-    message.configure(text=res)
+    lbl_noti_text.configure(text=res)
 
 
 def getImagesAndLabels(path):
     # get the path of all the files in the folder
-    imagePaths = [os.path.join(path, f) for f in os.listdir(path)]
-    # print(imagePaths)
+    # imagePaths = [os.path.join(path, f) for f in os.listdir(path)]
+    imagePaths = [f for f in glob.glob(path+'/*.jpg')]
 
     # create empth face list
     faces = []
@@ -166,7 +158,6 @@ def getImagesAndLabels(path):
     # now looping through all the image paths and loading the Ids and the images
     for imagePath in imagePaths:
         # loading the image and converting it to gray scale
-        # When translating a color image to black and white (mode “L”), the library uses the ITU-R 601-2 luma transform:  L = R * 299/1000 + G * 587/1000 + B * 114/1000
         pilImage = Image.open(imagePath).convert('L')
         # Now we are converting the PIL image into numpy array
         imageNp = np.array(pilImage, 'uint8')
@@ -180,10 +171,10 @@ def getImagesAndLabels(path):
 
 def TrackImages():
     recognizer = cv2.face.LBPHFaceRecognizer_create()  # cv2.createLBPHFaceRecognizer()
-    recognizer.read("TrainingImageLabel\Trainner.yml")
+    recognizer.read("TrainingImageLabel/Trainner.yml")
     harcascadePath = "haarcascade_frontalface_default.xml"
     faceCascade = cv2.CascadeClassifier(harcascadePath)
-    df = pd.read_csv("StudentDetails\StudentDetails.csv")
+    df = pd.read_csv("StudentDetails/StudentDetails.csv")
     cam = cv2.VideoCapture(0)
     font = cv2.FONT_HERSHEY_SIMPLEX
     col_names = ['Id', 'Name', 'Date', 'Time']
@@ -191,17 +182,15 @@ def TrackImages():
     while True:
         ret, im = cam.read()
         gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
-        faces = faceCascade.detectMultiScale(gray, 1.3, 5)
+        faces = faceCascade.detectMultiScale(gray, 1.2, 5)
         for(x, y, w, h) in faces:
             cv2.rectangle(im, (x, y), (x+w, y+h), (225, 0, 0), 2)
             Id, conf = recognizer.predict(gray[y:y+h, x:x+w])
-            print(Id, conf)
-            confidence = int(100*(1-(conf)/300))
-            if(confidence > 75):
+            if(conf < 50):
                 ts = time.time()
-                date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
+                date = datetime.datetime.fromtimestamp(ts).strftime('%m-%d')
                 timeStamp = datetime.datetime.fromtimestamp(
-                    ts).strftime('%H:%M:%S')
+                    ts).strftime('%H:%M')
                 aa = df.loc[df['Id'] == Id]['Name'].values
                 tt = str(Id)+"-"+aa
                 attendance.loc[len(attendance)] = [Id, aa, date, timeStamp]
@@ -209,46 +198,38 @@ def TrackImages():
             else:
                 Id = 'Unknown'
                 tt = str(Id)
+            if(conf > 75):
                 noOfFile = len(os.listdir("ImagesUnknown"))+1
-                cv2.imwrite("ImagesUnknown\Image"+str(noOfFile) +
+                cv2.imwrite("ImagesUnknown/Image"+str(noOfFile) +
                             ".jpg", im[y:y+h, x:x+w])
             cv2.putText(im, str(tt), (x, y+h), font, 1, (255, 255, 255), 2)
         attendance = attendance.drop_duplicates(subset=['Id'], keep='first')
-        cv2.imshow('im', im)
+        cv2.imshow('Detecting Student...', im)
         if (cv2.waitKey(1) == ord('q')):
             break
     ts = time.time()
     date = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d')
     timeStamp = datetime.datetime.fromtimestamp(ts).strftime('%H:%M:%S')
     Hour, Minute, Second = timeStamp.split(":")
-    fileName = "Attendance\Attendance_"+date+"_"+Hour+"-"+Minute+"-"+Second+".csv"
+    fileName = "Attendance/Attendance_"+date+"_"+Hour+"-"+Minute+"-"+Second+".csv"
     attendance.to_csv(fileName, index=False)
     cam.release()
     cv2.destroyAllWindows()
     # print(attendance)
     res = attendance
-    message2.configure(text=res)
+    frm_detail.configure(text=res)
 
 
-clearButton = tk.Button(window, text="Clear", command=clear, fg="white", bg="blue",
-                        width=15, height=2, font=('times new roman', 15, ' bold '))
-clearButton.place(x=550, y=100)
-clearButton2 = tk.Button(window, text="Clear", command=clear2, fg="white", bg="blue",
-                         width=15, height=2, font=('times new roman', 15, ' bold '))
-clearButton2.place(x=550, y=200)
-takeImg = tk.Button(window, text="Take Images", command=TakeImages, fg="white", bg="blue",
-                    width=20, height=3, font=('times', 15, ' bold '))
-takeImg.place(x=0, y=400)
-trainImg = tk.Button(window, text="Train Images", command=TrainImages, fg="white",
-                     bg="blue", width=20, height=3, font=('times', 15, ' bold '))
-trainImg.place(x=280, y=400)
-trackImg = tk.Button(window, text="Track Images", command=TrackImages, fg="white",
-                     bg="blue", width=20, height=3, font=('times', 15, ' bold '))
-trackImg.place(x=560, y=400)
-quitWindow = tk.Button(window, text="Quit", command=window.destroy, fg="white", bg="blue",
-                       width=20, height=3, font=('times', 15, ' bold '))
-quitWindow.place(x=900, y=400)
-copyWrite = tk.Text(window, background=window.cget(
-    "background"), borderwidth=0, font=('times', 30, 'italic bold underline'))
+btn_capture = tk.Button(master=frame_register, command=TakeImages, text="Capture Images", background="#7EEE7C", font=(
+    "Helvetica", 14), fg="#212121", width=24, height=2, borderwidth=0)
+btn_capture.place(x=40, y=240)
 
-window.mainloop()
+btn_train = tk.Button(master=frame_register, command=TrainImages, text="Train Model", background="#7CFE99", font=(
+    "Helvetica", 14, 'bold'), fg="#212121", width=22, height=2, borderwidth=0)
+btn_train.place(x=40, y=320)
+
+btn_track = tk.Button(master=frame_attendance, command=TrackImages, text="Track Image", background="#7EEE7C", font=(
+    "Helvetica", 14), fg="#212121", width=25, height=2, borderwidth=0, activebackground="#94f0bb")
+btn_track.place(x=34, y=80)
+
+root.mainloop()
